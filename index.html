@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1e3d6b">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <title>DIY Motion – v5.4 (inline)</title>
+  <style>
+    :root{--bg:#0f172a;--bg-card:#111827;--bg-elev:#0b1220;--bd:#1f2937;--fg:#e5e7eb;--muted:#9ca3af;}
+    *{box-sizing:border-box} body{margin:0;font-family:-apple-system,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--fg)}
+    header{position:sticky;top:0;background:#0f172acc;backdrop-filter:blur(6px);border-bottom:1px solid var(--bd);padding:12px 16px;display:flex;gap:12px;align-items:center;z-index:9}
+    main{padding:16px;display:grid;gap:16px} .card{background:var(--bg-card);border:1px solid var(--bd);border-radius:12px;padding:14px}
+    input,select,button{padding:10px 12px;border-radius:10px;border:1px solid #334155;background:var(--bg-elev);color:var(--fg)}
+    button{cursor:pointer} button.secondary{background:#0b1220} label{font-size:12px;color:#a1a1aa}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px} .row{display:grid;gap:6px}
+    .task{display:grid;grid-template-columns:1fr auto;gap:8px;padding:10px;border:1px dashed #374151;border-radius:10px} .pill{padding:3px 8px;border:1px solid #334155;border-radius:999px;font-size:11px}
+    .kbar{display:flex;gap:8px;align-items:center;margin-bottom:8px} .weekday{position:sticky;top:0;background:#0b1220cc;border-bottom:1px solid #1f2937;z-index:5;display:grid;grid-template-columns:48px repeat(7,1fr)}
+    .weekday div{padding:8px 6px;font-size:12px;color:#cbd5e1;text-align:center} .weekday .sp{text-align:left;color:#94a3b8}
+    .cal-wrap{overflow:auto;background:#0b1220;border:1px solid #263142;border-radius:12px} .cal-day,.cal-week{position:relative;min-height:900px}
+    .hours{position:absolute;left:0;top:0;bottom:0;width:48px;border-right:1px solid #233048} .hours div{height:60px;padding:2px 6px;font-size:11px;color:#94a3b8}
+    .cols{position:absolute;left:48px;right:0;top:0;bottom:0;display:grid} .cols.day{grid-template-columns:1fr} .cols.week{grid-template-columns:repeat(7,1fr)}
+    .col{position:relative;border-right:1px dashed #24324a} .col:last-child{border-right:0} .gridline{position:absolute;left:0;right:0;height:1px;background:#1f2937;opacity:.6}
+    .event{position:absolute;border-radius:10px;border:1px solid #334155;background:#1e293b;padding:6px 8px;font-size:12px;overflow:hidden} .event .t{font-weight:600;margin-bottom:2px}
+    .event.busy{background:#0f172a;border-style:dashed;opacity:.85} .backlog{position:absolute;left:54px;right:6px;top:4px;display:flex;gap:6px;flex-wrap:wrap} .chip{padding:4px 8px;border:1px solid #334155;border-radius:999px;font-size:11px}
+  </style>
+</head>
+<body>
+  <header>
+    <img src="./icons/icon-192.png" alt="" width="24" height="24">
+    <strong>DIY Motion – v5.4 (inline)</strong>
+  </header>
+
+  <main>
+    <section class="card">
+      <h3 style="margin:0 0 8px">Neue Aufgabe</h3>
+      <div class="grid">
+        <div class="row"><label>Titel</label><input id="title" placeholder="z. B. Angebot für Kunde A"></div>
+        <div class="row"><label>Dauer (Minuten)</label><input id="duration" type="number" min="5" step="5" value="60"></div>
+        <div class="row"><label>Deadline</label><input id="deadline" type="datetime-local"></div>
+        <div class="row"><label><input type="checkbox" id="hard"> Harte Deadline</label></div>
+        <div class="row"><label>Priorität</label>
+          <select id="priority">
+            <option value="1">Sehr niedrig</option>
+            <option value="2">Niedrig</option>
+            <option value="3" selected>Mittel</option>
+            <option value="4">Hoch</option>
+            <option value="5">Sehr hoch</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:8px">
+        <button id="addTask">Aufgabe in Inbox</button>
+        <button id="plan">Jetzt einplanen</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3 style="margin:0 0 8px">Aufgaben (Inbox/aktiv)</h3>
+      <div id="tasks"></div>
+    </section>
+
+    <section class="card">
+      <div class="kbar">
+        <div id="kTitle" class="title">Kalender</div>
+        <span style="flex:1"></span>
+        <button id="prev" class="secondary">‹</button>
+        <button id="today" class="secondary">Heute</button>
+        <button id="next" class="secondary">›</button>
+        <button id="vDay">Tag</button>
+        <button id="vWeek" class="secondary">Woche</button>
+        <label style="display:flex;align-items:center;gap:6px;margin-left:8px" class="muted">
+          <input type="checkbox" id="toggleBusy" checked> Busy anzeigen
+        </label>
+      </div>
+      <div class="cal-wrap">
+        <div id="weekday" class="weekday" style="display:none"></div>
+        <div id="calendar" class="cal-day">
+          <div class="hours" id="hours"></div>
+          <div class="cols day" id="cols"></div>
+          <div id="backlog" class="backlog"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3 style="margin:0 0 8px">Liste (Text)</h3>
+      <div id="schedule"></div>
+    </section>
+  </main>
+
+  <script>
+  /* v5.4 inline */
+const $ = (s)=>document.querySelector(s);
+const KEYS={TASKS:'dm_tasks',SETTINGS:'dm_settings',EVENTS:'dm_events',BUSY:'dm_busy',CAL:'dm_cal_state'};
+const read=(k,d)=>{try{return JSON.parse(localStorage.getItem(k)||JSON.stringify(d));}catch{return d;}};
+const write=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch(e){alert('Speicherfehler: '+e);}};
+function uuid(){try{return crypto.randomUUID();}catch{return Math.random().toString(36).slice(2);}}
+function pad(n){return (n<10?'0':'')+n;}
+function toMinutes(hhmm){const [h,m]=hhmm.split(':').map(Number);return h*60+m;}
+function startOfDay(d){const x=new Date(d);x.setHours(0,0,0,0);return x;}
+function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x;}
+function fmtDay(d){return d.toLocaleDateString(undefined,{weekday:'short', day:'2-digit', month:'short'});}
+const H=60;
+
+// SW: unregister old, register new v54
+if ('serviceWorker' in navigator){
+  window.addEventListener('load', async ()=>{
+    try{const regs=await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r=>r.unregister()));}catch(e){}
+    try{await navigator.serviceWorker.register('./sw-v54.js');}catch(e){console.warn(e);}
+  });
+}
+
+let calState=read(KEYS.CAL,null)||{view:'day',date:new Date().toISOString(),showBusy:true};
+function saveCal(){write(KEYS.CAL,calState);}
+
+function taskPlacementSummary(taskId){
+  const evs = read(KEYS.EVENTS, []).filter(e=>e.taskId===taskId);
+  if (!evs.length) return null;
+  evs.sort((a,b)=>new Date(a.startISO)-new Date(b.startISO));
+  const first = new Date(evs[0].startISO);
+  const last = new Date(evs[evs.length-1].endISO);
+  const blocks = evs.length;
+  const dayStr = first.toDateString() === new Date().toDateString() ? 'heute' : fmtDay(first);
+  const span = `${pad(first.getHours())}:${pad(first.getMinutes())}–${pad(last.getHours())}:${pad(last.getMinutes())}`;
+  return { first, last, blocks, label: `Geplant: ${dayStr} (${span}${blocks>1?` · ${blocks} Blöcke`:''})` };
+}
+
+function renderTasks(){
+  const wrap=$('#tasks'); const tasks=read(KEYS.TASKS,[]);
+  if(!wrap) return;
+  if(!tasks.length){wrap.innerHTML='<p class="muted">Noch keine Aufgaben.</p>';return;}
+  wrap.innerHTML='';
+  tasks.sort((a,b)=> (a.active===b.active?0:(a.active?1:-1)) || (a.deadline?new Date(a.deadline).getTime():Infinity)-(b.deadline?new Date(b.deadline).getTime():Infinity) || (b.priority||3)-(a.priority||3));
+  tasks.forEach(t=>{
+    const row=document.createElement('div');row.className='task';
+    const sum = taskPlacementSummary(t.id);
+    row.innerHTML=`<div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <strong>${t.title}</strong>
+        ${t.active?'<span class="pill">aktiv</span>':'<span class="pill">Inbox</span>'}
+        ${t.deferUntilISO?`<span class="pill">frühestens: ${fmtDay(new Date(t.deferUntilISO))}</span>`:''}
+      </div>
+      <div class="muted">Dauer ${t.duration} Min ${t.deadline?('· DL '+new Date(t.deadline).toLocaleString()):''} · Prio ${t.priority||3}</div>
+      ${sum?`<div class="muted">${sum.label}</div>`:''}
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <label class="muted"><input type="checkbox" class="act" data-id="${t.id}" ${t.active?'checked':''}> aktiv</label>
+      <button class="secondary defer" data-id="${t.id}">Morgen</button>
+      <button class="secondary resh" data-id="${t.id}">Reschedule</button>
+      <button class="secondary del" data-id="${t.id}">Löschen</button>
+    </div>`;
+    wrap.appendChild(row);
+  });
+  // actions
+  wrap.querySelectorAll('.del').forEach(b=>b.onclick=(e)=>{
+    const id=e.currentTarget.dataset.id;
+    write(KEYS.TASKS, read(KEYS.TASKS,[]).filter(x=>x.id!==id));
+    write(KEYS.EVENTS, read(KEYS.EVENTS,[]).filter(ev=>ev.taskId!==id));
+    renderTasks(); renderCalendar(); renderList();
+  });
+  wrap.querySelectorAll('.act').forEach(sw=>sw.onchange=(e)=>{
+    const id=e.currentTarget.dataset.id; const tasks=read(KEYS.TASKS,[]);
+    const t=tasks.find(x=>x.id===id); if(!t) return;
+    t.active=e.currentTarget.checked;
+    if(!t.active){ // de-activate: remove its events
+      write(KEYS.EVENTS, read(KEYS.EVENTS,[]).filter(ev=>ev.taskId!==id));
+      t.unscheduled=true; t.remaining=t.duration;
+    }
+    write(KEYS.TASKS,tasks);
+    renderTasks(); if(t.active){ plan(); } else { renderCalendar(); renderList(); }
+  });
+  // Defer to tomorrow
+  wrap.querySelectorAll('.defer').forEach(btn=>btn.onclick=(e)=>{
+    const id=e.currentTarget.dataset.id;
+    const tasks=read(KEYS.TASKS,[]);
+    const t=tasks.find(x=>x.id===id); if(!t) return;
+    // remove existing plan for this task
+    write(KEYS.EVENTS, read(KEYS.EVENTS,[]).filter(ev=>ev.taskId!==id));
+    // set earliest scheduling to tomorrow 00:00
+    const td = new Date(); const tomorrow = new Date(td.getFullYear(), td.getMonth(), td.getDate()+1, 0,0,0,0);
+    t.deferUntilISO = tomorrow.toISOString();
+    t.unscheduled = true; t.remaining = t.duration;
+    write(KEYS.TASKS, tasks);
+    plan();
+  });
+  // Reschedule (fresh)
+  wrap.querySelectorAll('.resh').forEach(btn=>btn.onclick=(e)=>{
+    const id=e.currentTarget.dataset.id;
+    const tasks=read(KEYS.TASKS,[]);
+    const t=tasks.find(x=>x.id===id); if(!t) return;
+    // remove events (and unlock)
+    write(KEYS.EVENTS, read(KEYS.EVENTS,[]).filter(ev=>ev.taskId!==id));
+    t.unscheduled = true; t.remaining = t.duration;
+    // keep deferUntilISO if user set it previously
+    write(KEYS.TASKS, tasks);
+    plan();
+  });
+}
+
+function addTask(){
+  const title=$('#title').value.trim();
+  const dur=parseInt($('#duration').value,10)||60;
+  const deadline=$('#deadline').value||null;
+  const hard=$('#hard').checked;
+  const priority=parseInt($('#priority').value,10)||3;
+  if(!title){alert('Titel fehlt.');return;}
+  const tasks=read(KEYS.TASKS,[]);
+  tasks.push({id:uuid(),title,duration:dur,deadline,hardDeadline:hard,priority,active:false,remaining:dur,unscheduled:true,after:[],before:[],deferUntilISO:null});
+  write(KEYS.TASKS,tasks);
+  $('#title').value=''; $('#duration').value=60; $('#deadline').value=''; $('#priority').value=3; $('#hard').checked=false;
+  renderTasks();
+}
+
+function plan(){
+  const s=read(KEYS.SETTINGS,{workStart:'09:00',workEnd:'18:00',breakStart:'12:00',breakEnd:'13:00',maxBlock:50,buffer:10,horizon:14,weekends:'no'});
+  const tasks=read(KEYS.TASKS,[]).filter(t=>t.active).map(t=>({...t,remaining:(t.remaining??t.duration)}));
+  const locked=read(KEYS.EVENTS,[]).filter(e=>e.locked);
+  write(KEYS.EVENTS, locked.slice());
+  const events=read(KEYS.EVENTS,[]);
+  function minutesToDate(day,m){const y=day.getFullYear(),m0=day.getMonth(),d=day.getDate();return new Date(y,m0,d,Math.floor(m/60),m%60,0,0);}
+  function subtract(slots,busy){if(!busy.length) return slots;busy.sort((a,b)=>a[0]-b[0]);let res=[];for(const [a,b] of slots){let cur=a;for(const [x,y] of busy){if(y<=cur||x>=b) continue; if(x>cur) res.push([cur,Math.min(x,b)]); cur=Math.max(cur,y);if(cur>=b)break;} if(cur<b)res.push([cur,b]);} return res;}
+  for(const t of tasks){
+    let remaining=t.remaining;
+    for(let d=0; d<(s.horizon||14)&&remaining>0; d++){
+      const day=new Date(); day.setDate(day.getDate()+d);
+      // respect deferUntilISO: skip days before this
+      if (t.deferUntilISO) {
+        const startEligible = startOfDay(new Date(t.deferUntilISO));
+        if (startOfDay(day) < startEligible) continue;
+      }
+      const wd=day.getDay(); if(s.weekends!=='yes' && (wd===0||wd===6)) continue;
+      const start=toMinutes(s.workStart||'09:00'), end=toMinutes(s.workEnd||'18:00');
+      const bS=toMinutes(s.breakStart||'12:00'), bE=toMinutes(s.breakEnd||'13:00');
+      let slots=[]; if(bS>start) slots.push([start,Math.min(bS,end)]); if(bE<end) slots.push([Math.max(bE,start),end]);
+      const dayBusy=read(KEYS.BUSY,[]).filter(ev=>{const sdt=new Date(ev.startISO), edt=new Date(ev.endISO); return edt>startOfDay(day) && sdt<addDays(startOfDay(day),1);}).map(ev=>{const sdt=new Date(ev.startISO), edt=new Date(ev.endISO);return [sdt.getHours()*60+sdt.getMinutes(), edt.getHours()*60+edt.getMinutes()];});
+      slots=subtract(slots,dayBusy);
+      const isToday=new Date().toDateString()===day.toDateString(); if(isToday){const now=new Date();const cur=now.getHours()*60+now.getMinutes()+5; slots=slots.map(([a,b])=>[Math.max(a,cur),b]).filter(([a,b])=>b>a);}
+      for(const [a,b] of slots){
+        let cur=a;
+        while(cur<b && remaining>0){
+          const free=b-cur; if(free<=0) break;
+          const block=Math.min(s.maxBlock||50, remaining, free);
+          const st=minutesToDate(day,cur); const en=minutesToDate(day,cur+block);
+          if(t.hardDeadline && t.deadline && en>new Date(t.deadline)) break;
+          events.push({id:uuid(),taskId:t.id,title:t.title,startISO:st.toISOString(),endISO:en.toISOString(),locked:false,priority:t.priority||3});
+          remaining-=block; cur+=block+(remaining>0?(s.buffer||10):0);
+        }
+      }
+    }
+    t.remaining=remaining; t.unscheduled=remaining>0;
+  }
+  const all=read(KEYS.TASKS,[]); const mp=Object.fromEntries(all.map(x=>[x.id,x]));
+  tasks.forEach(t=>{mp[t.id]={...mp[t.id],remaining:t.remaining,unscheduled:t.unscheduled};});
+  write(KEYS.TASKS,Object.values(mp)); write(KEYS.EVENTS,events);
+  renderTasks(); renderCalendar(); renderList();
+}
+
+function renderList(){
+  const wrap=$('#schedule'); if(!wrap) return;
+  const events=read(KEYS.EVENTS,[]); if(!events.length){wrap.innerHTML='<p class="muted">Noch kein Plan.</p>'; return;}
+  const by={}; events.forEach(ev=>{const k=new Date(ev.startISO).toDateString(); (by[k]=by[k]||[]).push(ev);});
+  Object.values(by).forEach(a=>a.sort((x,y)=>new Date(x.startISO)-new Date(y.startISO)));
+  wrap.innerHTML='';
+  Object.keys(by).sort((a,b)=>new Date(a)-new Date(b)).forEach(day=>{
+    const sec=document.createElement('div'); sec.style.borderLeft='3px solid #1e3a8a'; sec.style.paddingLeft='12px'; sec.style.marginTop='8px';
+    sec.innerHTML=`<h3 style="margin:6px 0">${day}</h3>`;
+    by[day].forEach(ev=>{
+      const s=new Date(ev.startISO), e=new Date(ev.endISO);
+      const tm=`${pad(s.getHours())}:${pad(s.getMinutes())}–${pad(e.getHours())}:${pad(e.getMinutes())}`;
+      const item=document.createElement('div'); item.style.padding='8px'; item.style.border='1px solid #334155'; item.style.borderRadius='10px'; item.style.margin='6px 0';
+      item.innerHTML=`<div><strong>${ev.title}</strong></div><div class="muted">${tm}</div>`;
+      sec.appendChild(item);
+    });
+    wrap.appendChild(sec);
+  });
+}
+
+const HOUR_HEIGHT=60;
+function renderCalendar(){
+  const date=new Date(calState.date); const view=calState.view; const showBusy=calState.showBusy;
+  $('#toggleBusy').checked=!!showBusy;
+  const hours=$('#hours'); hours.innerHTML=''; for(let h=0;h<24;h++){const d=document.createElement('div'); d.style.height=HOUR_HEIGHT+'px'; d.textContent=pad(h)+':00'; hours.appendChild(d);}
+  const cols=$('#cols'); const cal=$('#calendar'); const weekday=$('#weekday'); const backlog=$('#backlog');
+  cols.innerHTML=''; backlog.innerHTML='';
+  const tasks=read(KEYS.TASKS,[]); const unsch=tasks.filter(t=>t.active && t.unscheduled);
+  if(view==='day'){ unsch.slice(0,12).forEach(t=>{const c=document.createElement('span'); c.className='chip'; c.textContent=`${t.title} • ${t.duration}m`; backlog.appendChild(c);});}
+  document.querySelectorAll('.gridline').forEach(n=>n.remove());
+  for(let h=1;h<24;h++){const gl=document.createElement('div'); gl.className='gridline'; gl.style.top=(h*HOUR_HEIGHT)+'px'; $('#calendar').appendChild(gl);}
+  const events=read(KEYS.EVENTS,[]); const busy=showBusy?read(KEYS.BUSY,[]):[];
+  if(view==='day'){
+    weekday.style.display='none'; cal.className='cal-day'; cols.className='cols day';
+    $('#kTitle').textContent=date.toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'short',year:'numeric'});
+    const col=document.createElement('div'); col.className='col'; col.style.height=(HOUR_HEIGHT*24)+'px'; cols.appendChild(col);
+    place(col, events, busy, date);
+  } else {
+    const names=['Mo','Di','Mi','Do','Fr','Sa','So'];
+    const ws=startOfDay(addDays(date, (1-(date.getDay()||7)) )); const we=addDays(ws,6);
+    $('#kTitle').textContent=`${ws.toLocaleDateString(undefined,{day:'2-digit',month:'short'})} – ${we.toLocaleDateString(undefined,{day:'2-digit',month:'short',year:'numeric'})}`;
+    weekday.style.display='grid'; weekday.innerHTML='<div class="sp">Zeit</div>';
+    for(let i=0;i<7;i++){const d=addDays(ws,i); weekday.innerHTML+=`<div>${names[i]} ${d.getDate()}.${d.getMonth()+1}.</div>`;}
+    cal.className='cal-week'; cols.className='cols week';
+    for(let i=0;i<7;i++){const col=document.createElement('div'); col.className='col'; col.style.height=(HOUR_HEIGHT*24)+'px'; cols.appendChild(col); place(col, events, busy, addDays(ws,i));}
+  }
+}
+function place(col, events, busy, day){
+  const d0=startOfDay(day), d1=addDays(d0,1);
+  const E=events.filter(ev=>{const s=new Date(ev.startISO), e=new Date(ev.endISO); return e>d0 && s<d1;});
+  const B=busy.filter(ev=>{const s=new Date(ev.startISO), e=new Date(ev.endISO); return e>d0 && s<d1;});
+  B.forEach(ev=>{
+    const s=new Date(ev.startISO), e=new Date(ev.endISO);
+    const top=(s.getHours()*60+s.getMinutes())*(H/60); const h=Math.max(18,((e-s)/60000)*(H/60));
+    const div=document.createElement('div'); div.className='event busy'; div.style.top=top+'px'; div.style.height=h+'px'; div.innerHTML=`<div class="t">${ev.title}</div>`; col.appendChild(div);
+  });
+  E.forEach(ev=>{
+    const s=new Date(ev.startISO), e=new Date(ev.endISO);
+    const top=(s.getHours()*60+s.getMinutes())*(H/60); const h=Math.max(18,((e-s)/60000)*(H/60));
+    const div=document.createElement('div'); div.className='event'; div.style.top=top+'px'; div.style.height=h+'px'; div.innerHTML=`<div class="t">${ev.title}</div><div class="muted">${pad(s.getHours())}:${pad(s.getMinutes())}–${pad(e.getHours())}:${pad(e.getMinutes())}</div>`; col.appendChild(div);
+  });
+}
+
+// wire UI
+document.addEventListener('DOMContentLoaded',()=>{
+  $('#addTask')?.addEventListener('click', addTask);
+  $('#plan')?.addEventListener('click', plan);
+  $('#vDay').onclick=()=>{calState.view='day'; saveCal(); renderCalendar();};
+  $('#vWeek').onclick=()=>{calState.view='week'; saveCal(); renderCalendar();};
+  $('#today').onclick=()=>{calState.date=new Date().toISOString(); saveCal(); renderCalendar();};
+  $('#prev').onclick=()=>{const d=new Date(calState.date); calState.date=(calState.view==='day'?addDays(d,-1):addDays(d,-7)).toISOString(); saveCal(); renderCalendar();};
+  $('#next').onclick=()=>{const d=new Date(calState.date); calState.date=(calState.view==='day'?addDays(d,1):addDays(d,7)).toISOString(); saveCal(); renderCalendar();};
+  $('#toggleBusy').onchange=(e)=>{calState.showBusy=e.target.checked; saveCal(); renderCalendar();};
+  renderTasks(); renderList(); renderCalendar();
+});
+
+  </script>
+</body>
+</html>
